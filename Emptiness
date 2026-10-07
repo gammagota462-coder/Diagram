@@ -1,0 +1,893 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-stone-950 text-stone-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagrama do Vazio — Registro e Saturação Diária</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter e Cormorant Garamond para elegância reflexiva -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Cormorant Garamond', 'serif'],
+          },
+          colors: {
+            stone: {
+              850: '#1c1917',
+              900: '#141210',
+              950: '#0c0a09',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #141210;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #292524;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #44403c;
+    }
+    
+    /* Pulsação sutil na tela quando atinge o preto pleno */
+    @keyframes subtleGaze {
+      0%, 100% { box-shadow: 0 0 45px rgba(0, 0, 0, 0.9), inset 0 0 50px rgba(0,0,0,1); }
+      50% { box-shadow: 0 0 70px rgba(20, 20, 25, 0.95), inset 0 0 70px rgba(0,0,0,1); }
+    }
+    .full-density {
+      animation: subtleGaze 6s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="min-h-full flex flex-col font-sans bg-stone-950 text-stone-200 antialiased selection:bg-stone-700 selection:text-stone-100">
+
+  <header class="border-b border-stone-800/80 bg-stone-900/60 backdrop-blur-md sticky top-0 z-30 px-4 py-3 sm:px-8 sm:py-4">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3 text-center sm:text-left">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-stone-100 via-stone-500 to-black p-[2px] shadow-md flex items-center justify-center">
+          <div class="w-full h-full rounded-full bg-stone-950 flex items-center justify-center">
+            <span class="w-2.5 h-2.5 rounded-full bg-white transition-colors duration-700" id="headerDot"></span>
+          </div>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-semibold tracking-tight font-serif text-stone-100">
+            Diagrama do Vazio
+          </h1>
+          <p class="text-xs text-stone-400 font-light">
+            O vazio não é o nada; é uma tela em branco saturada de vida esperando ser lembrada.
+          </p>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex items-center gap-2 text-xs">
+        <button id="btnExample" type="button" class="px-3 py-1.5 rounded-lg border border-stone-700/80 hover:bg-stone-800 text-stone-300 transition-colors flex items-center gap-1.5" title="Demonstrar o diagrama completo com exemplos">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-stone-400"></i>
+          <span>Exemplo Completo</span>
+        </button>
+        <button id="btnExport" type="button" class="px-3 py-1.5 rounded-lg border border-stone-700/80 hover:bg-stone-800 text-stone-300 transition-colors flex items-center gap-1.5" title="Exportar imagem do diagrama e relatório">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-stone-400"></i>
+          <span>Salvar Registro</span>
+        </button>
+        <button id="btnReset" type="button" class="px-3 py-1.5 rounded-lg border border-red-950/60 hover:bg-red-950/40 text-red-400/90 transition-colors flex items-center gap-1.5" title="Limpar as anotações do dia">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-red-400"></i>
+          <span>Reiniciar</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto w-full px-4 sm:px-8 py-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- LEFT COLUMN: Canvas and visual representation (Lg: 5 columns, sticky) -->
+    <div class="lg:col-span-5 flex flex-col items-center lg:sticky lg:top-24 gap-6">
+      
+      <!-- Central Canvas Container -->
+      <div class="w-full flex flex-col items-center">
+        <div class="relative group p-4">
+          <!-- Ambient backlight glow that darkens as density increases -->
+          <div id="ambientGlow" class="absolute inset-4 rounded-full blur-2xl transition-all duration-1000 opacity-60 bg-stone-300"></div>
+
+          <!-- Canvas frame -->
+          <div id="canvasFrame" class="relative w-72 h-72 sm:w-84 sm:h-84 md:w-96 md:h-96 rounded-full overflow-hidden border-2 border-stone-700/60 shadow-2xl transition-all duration-700 bg-white">
+            <canvas id="voidCanvas" width="800" height="800" class="w-full h-full block cursor-crosshair"></canvas>
+            
+            <!-- Center Crosshair / Zen Target (fades away as it becomes total black) -->
+            <div id="zenReticle" class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-30 transition-opacity duration-1000">
+              <div class="w-12 h-[1px] bg-stone-500 absolute"></div>
+              <div class="h-12 w-[1px] bg-stone-500 absolute"></div>
+              <div class="w-4 h-4 rounded-full border border-stone-500 absolute"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Density Meter & Status -->
+        <div class="w-full max-w-sm mt-3 px-2 flex flex-col gap-2">
+          <div class="flex items-baseline justify-between">
+            <span class="text-xs uppercase tracking-widest text-stone-400 font-medium">Densidade do Real</span>
+            <span id="densityPercentage" class="text-xl font-bold font-serif text-stone-100">0%</span>
+          </div>
+
+          <!-- Progress Bar showing transition from pure white to jet black -->
+          <div class="w-full h-2.5 rounded-full bg-stone-900 border border-stone-700 overflow-hidden p-[1px]">
+            <div id="densityBar" class="h-full rounded-full transition-all duration-700 ease-out bg-stone-200" style="width: 0%"></div>
+          </div>
+
+          <!-- Philosophical DBT status quote -->
+          <div class="text-center mt-2 min-h-[50px] flex flex-col items-center justify-center">
+            <p id="stateQuote" class="text-sm font-serif italic text-stone-300 transition-all duration-500">
+              "A tela está em silêncio. Um vazio aparente à espera das memórias que sustentam o dia."
+            </p>
+            <span id="subQuote" class="text-[11px] text-stone-500 mt-0.5">
+              0 de 28 âncoras lembradas.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Category Color Legend -->
+      <div class="w-full max-w-sm bg-stone-900/60 border border-stone-800/80 rounded-xl p-3.5 grid grid-cols-2 gap-2 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-[#0a1128] border border-blue-900 shadow"></span>
+          <span class="text-stone-300">Pessoas <span class="text-stone-500">(Índigo)</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-[#1b2612] border border-emerald-950 shadow"></span>
+          <span class="text-stone-300">Funcional <span class="text-stone-500">(Sépia/Musgo)</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-[#2a0815] border border-rose-950 shadow"></span>
+          <span class="text-stone-300">Músicas <span class="text-stone-500">(Carmim)</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-[#18181b] border border-stone-700 shadow"></span>
+          <span class="text-stone-300">Criativo <span class="text-stone-500">(Grafite)</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: 28 Anchors structured checklist (Lg: 7 columns) -->
+    <div class="lg:col-span-7 flex flex-col gap-5">
+      
+      <!-- Category Tabs -->
+      <div class="flex overflow-x-auto pb-2 gap-2 border-b border-stone-800/90 text-sm no-scrollbar">
+        <button class="cat-tab active px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center gap-2 bg-stone-800 text-stone-100 border border-stone-700" data-cat="pessoas">
+          <i data-lucide="users" class="w-4 h-4 text-blue-400"></i>
+          <span>1. Pessoas & Presenças</span>
+          <span class="badge text-xs px-1.5 py-0.5 rounded-full bg-stone-900 text-stone-400 font-mono" id="badge-pessoas">0/10</span>
+        </button>
+        <button class="cat-tab px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center gap-2 text-stone-400 hover:text-stone-200 hover:bg-stone-900 border border-transparent" data-cat="funcional">
+          <i data-lucide="sparkle" class="w-4 h-4 text-emerald-400"></i>
+          <span>2. Gosto & Rotina</span>
+          <span class="badge text-xs px-1.5 py-0.5 rounded-full bg-stone-900 text-stone-400 font-mono" id="badge-funcional">0/10</span>
+        </button>
+        <button class="cat-tab px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center gap-2 text-stone-400 hover:text-stone-200 hover:bg-stone-900 border border-transparent" data-cat="musicas">
+          <i data-lucide="music" class="w-4 h-4 text-rose-400"></i>
+          <span>3. Músicas do Dia</span>
+          <span class="badge text-xs px-1.5 py-0.5 rounded-full bg-stone-900 text-stone-400 font-mono" id="badge-musicas">0/5</span>
+        </button>
+        <button class="cat-tab px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center gap-2 text-stone-400 hover:text-stone-200 hover:bg-stone-900 border border-transparent" data-cat="criativo">
+          <i data-lucide="palette" class="w-4 h-4 text-stone-300"></i>
+          <span>4. Tarefas Criativas</span>
+          <span class="badge text-xs px-1.5 py-0.5 rounded-full bg-stone-900 text-stone-400 font-mono" id="badge-criativo">0/3</span>
+        </button>
+      </div>
+
+      <!-- Category Contextual Description -->
+      <div id="categoryHeader" class="bg-stone-900/50 border border-stone-800/80 rounded-xl p-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 id="categoryTitle" class="text-base font-semibold text-stone-100 flex items-center gap-2">
+            Pessoas & Conexões Reais
+          </h2>
+          <p id="categoryDescription" class="text-xs text-stone-400 mt-1">
+            Reconheça 10 pessoas que cruzaram seu caminho, lembranças de conversas, autores de livros que você leu, ou presenças que ancoram sua existência.
+          </p>
+        </div>
+        <div class="hidden sm:block text-right">
+          <span class="text-[11px] uppercase tracking-wider text-stone-500 font-mono">Tonalidade</span>
+          <div id="categoryColorTag" class="text-xs font-semibold text-blue-300 mt-0.5">Índigo Noturno</div>
+        </div>
+      </div>
+
+      <!-- Items List Container -->
+      <div id="itemsContainer" class="flex flex-col gap-3">
+        <!-- Rendered via JS -->
+      </div>
+
+      <!-- Bottom Hint -->
+      <div class="bg-stone-900/30 border border-stone-800/60 rounded-xl p-4 text-xs text-stone-400 flex items-center gap-3">
+        <i data-lucide="info" class="w-4 h-4 text-stone-400 flex-shrink-0"></i>
+        <span>
+          <strong>Dica Dialética:</strong> Não se preocupe em ter dias perfeitos. Mesmo a água que bebeu, a pessoa do caixa ou uma canção repetida carregam massa e substância para preencher o vazio aparente.
+        </span>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Export Modal -->
+  <div id="exportModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-stone-900 border border-stone-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl flex flex-col gap-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-serif text-lg font-semibold text-stone-100">Registro do Dia Consolidado</h3>
+        <button id="btnCloseModal" class="text-stone-400 hover:text-stone-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <p class="text-xs text-stone-400">
+        Você pode salvar a imagem do seu Diagrama do Vazio ou copiar o resumo das suas 28 âncoras para o seu diário pessoal.
+      </p>
+      
+      <div class="flex justify-center p-2 bg-stone-950 rounded-xl border border-stone-800">
+        <img id="exportPreviewImg" src="" alt="Diagrama Gerado" class="w-48 h-48 rounded-full border border-stone-700 shadow-md object-contain">
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-xs text-stone-400 font-medium">Resumo em Texto:</label>
+        <textarea id="exportSummaryText" readonly class="w-full h-32 text-xs bg-stone-950 border border-stone-800 rounded-lg p-2.5 text-stone-300 font-mono resize-none focus:outline-none"></textarea>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button id="btnCopySummary" class="px-4 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium flex items-center gap-1.5 transition-colors">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          <span>Copiar Resumo</span>
+        </button>
+        <a id="btnDownloadImage" download="diagrama-do-vazio.png" href="#" class="px-4 py-2 rounded-lg bg-white hover:bg-stone-200 text-stone-950 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span>Baixar Imagem</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-stone-900 border border-stone-700 text-stone-200 text-xs px-4 py-3 rounded-xl shadow-2xl transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none z-50 flex items-center gap-2">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastMsg">Mensagem</span>
+  </div>
+
+  <script>
+    /* Definition of data schema and categories */
+    const STORAGE_KEY = 'diagrama_do_vazio_v1';
+
+    const CATEGORIES = {
+      pessoas: {
+        id: 'pessoas',
+        title: 'Pessoas & Presenças',
+        subtitle: '10 vínculos, conversas, vozes ou presenças (físicas ou lembradas) que ancoram seu dia.',
+        colorTag: 'Índigo Noturno (#0a1128)',
+        count: 10,
+        baseColor: [10, 17, 40], // Deep Indigo RGB
+        icon: 'users',
+        colorClass: 'text-blue-400',
+        badgeBg: 'bg-blue-950/40 text-blue-300 border-blue-900/40'
+      },
+      funcional: {
+        id: 'funcional',
+        title: 'O que Gosto & Rotina Funcional',
+        subtitle: '10 ações que você aprecia ou tarefas vitais (banho, água, alimentação, arrumação) para se manter funcional.',
+        colorTag: 'Sépia & Musgo (#1b2612)',
+        count: 10,
+        baseColor: [27, 38, 18], // Deep Earth / Moss RGB
+        icon: 'sparkle',
+        colorClass: 'text-emerald-400',
+        badgeBg: 'bg-emerald-950/40 text-emerald-300 border-emerald-900/40'
+      },
+      musicas: {
+        id: 'musicas',
+        title: 'Músicas do Dia',
+        subtitle: '5 músicas ou sonoridades que tocaram ou ecoaram na sua mente hoje.',
+        colorTag: 'Carmim Sombrio (#2a0815)',
+        count: 5,
+        baseColor: [42, 8, 21], // Deep Wine RGB
+        icon: 'music',
+        colorClass: 'text-rose-400',
+        badgeBg: 'bg-rose-950/40 text-rose-300 border-rose-900/40'
+      },
+      criativo: {
+        id: 'criativo',
+        title: 'Tarefas Criativas',
+        subtitle: '3 gestos de criação, raciocínio, escrita ou elaboração de algo com suas mãos e pensamentos.',
+        colorTag: 'Grafite & Carvão (#121214)',
+        count: 3,
+        baseColor: [18, 18, 20], // Deep Charcoal RGB
+        icon: 'palette',
+        colorClass: 'text-stone-300',
+        badgeBg: 'bg-stone-800 text-stone-300 border-stone-700'
+      }
+    };
+
+    const INTENSITY_LABELS = {
+      1: 'Sutil (1)',
+      2: 'Presente (2)',
+      3: 'Importante (3)',
+      4: 'Marcante (4)',
+      5: 'Vital (5)'
+    };
+
+    // State initialization
+    let currentCategory = 'pessoas';
+    let appData = initializeData();
+
+    function initializeData() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error("Falha ao recuperar dados do localStorage", e);
+        }
+      }
+
+      // Default blank state
+      const initial = {};
+      Object.keys(CATEGORIES).forEach(catKey => {
+        initial[catKey] = [];
+        for (let i = 0; i < CATEGORIES[catKey].count; i++) {
+          initial[catKey].push({
+            id: `${catKey}_${i}`,
+            text: '',
+            intensity: 3,
+            checked: false,
+            // Random parameters to generate unique deterministic watercolor blobs
+            angle: (i / CATEGORIES[catKey].count) * (Math.PI * 2) + (Math.random() * 0.3 - 0.15),
+            distRatio: 0.15 + (Math.random() * 0.7),
+            seed: Math.random() * 1000
+          });
+        }
+      });
+      return initial;
+    }
+
+    function saveData() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+      } catch (e) {
+        console.error("Erro ao salvar", e);
+      }
+    }
+
+    function renderItems() {
+      const container = document.getElementById('itemsContainer');
+      const catConfig = CATEGORIES[currentCategory];
+      const items = appData[currentCategory];
+
+      // Update header details
+      document.getElementById('categoryTitle').textContent = catConfig.title;
+      document.getElementById('categoryDescription').textContent = catConfig.subtitle;
+      document.getElementById('categoryColorTag').textContent = catConfig.colorTag;
+
+      container.innerHTML = '';
+
+      items.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = `p-3 sm:p-4 rounded-xl border transition-all duration-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+          item.checked 
+            ? 'bg-stone-900/90 border-stone-700/80 shadow-md' 
+            : 'bg-stone-900/30 border-stone-800/60 hover:border-stone-700/60'
+        }`;
+
+        // Left checkbox + input
+        const leftGroup = document.createElement('div');
+        leftGroup.className = 'flex items-center gap-3 w-full sm:w-auto flex-1';
+
+        // Checkbox
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = item.checked;
+        checkbox.className = 'w-4 h-4 rounded text-stone-900 bg-stone-950 border-stone-700 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-stone-200';
+        checkbox.onchange = (e) => {
+          item.checked = e.target.checked;
+          // If checked but empty, provide a gentle auto-fill suggestion prompt
+          if (item.checked && !item.text.trim()) {
+            input.focus();
+          }
+          onDataChanged();
+          renderItems();
+        };
+
+        // Text input
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = item.text;
+        input.placeholder = `${index + 1}. Nomeie ou recorde esta presença...`;
+        input.className = `w-full bg-transparent border-0 border-b border-stone-800 focus:border-stone-500 focus:outline-none text-xs sm:text-sm py-1 transition-colors ${
+          item.checked ? 'text-stone-100 font-medium' : 'text-stone-400'
+        }`;
+        input.oninput = (e) => {
+          item.text = e.target.value;
+          if (item.text.trim().length > 0 && !item.checked) {
+            item.checked = true;
+            checkbox.checked = true;
+          }
+          saveData();
+          updateCanvasAndStats();
+        };
+
+        leftGroup.appendChild(checkbox);
+        leftGroup.appendChild(input);
+
+        // Right group: Intensity selector (1-5)
+        const rightGroup = document.createElement('div');
+        rightGroup.className = 'flex items-center gap-2 self-end sm:self-auto flex-shrink-0';
+
+        const intensityLabel = document.createElement('span');
+        intensityLabel.className = 'text-[11px] font-mono text-stone-500 mr-1 hidden sm:inline';
+        intensityLabel.textContent = 'Peso:';
+
+        rightGroup.appendChild(intensityLabel);
+
+        // Segmented buttons for intensity 1 to 5
+        const segContainer = document.createElement('div');
+        segContainer.className = 'flex items-center rounded-lg bg-stone-950 p-1 border border-stone-800 gap-0.5';
+
+        for (let lvl = 1; lvl <= 5; lvl++) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          const isActive = item.intensity === lvl;
+          btn.className = `w-6 h-6 rounded text-[11px] font-semibold flex items-center justify-center transition-all ${
+            isActive 
+              ? 'bg-stone-200 text-stone-950 shadow' 
+              : 'text-stone-500 hover:text-stone-300 hover:bg-stone-900'
+          }`;
+          btn.textContent = lvl;
+          btn.title = INTENSITY_LABELS[lvl];
+          btn.onclick = () => {
+            item.intensity = lvl;
+            if (!item.checked && item.text.trim().length > 0) {
+              item.checked = true;
+            }
+            saveData();
+            onDataChanged();
+            renderItems();
+          };
+          segContainer.appendChild(btn);
+        }
+
+        rightGroup.appendChild(segContainer);
+
+        row.appendChild(leftGroup);
+        row.appendChild(rightGroup);
+        container.appendChild(row);
+      });
+
+      // Update badge counters
+      updateBadges();
+      lucide.createIcons();
+    }
+
+    function updateBadges() {
+      Object.keys(CATEGORIES).forEach(cat => {
+        const items = appData[cat];
+        const completed = items.filter(it => it.checked && it.text.trim().length > 0).length;
+        const total = CATEGORIES[cat].count;
+        const badge = document.getElementById(`badge-${cat}`);
+        if (badge) {
+          badge.textContent = `${completed}/${total}`;
+          if (completed === total) {
+            badge.className = 'badge text-xs px-1.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 font-mono border border-emerald-800/60';
+          } else if (completed > 0) {
+            badge.className = 'badge text-xs px-1.5 py-0.5 rounded-full bg-stone-800 text-stone-200 font-mono';
+          } else {
+            badge.className = 'badge text-xs px-1.5 py-0.5 rounded-full bg-stone-900 text-stone-500 font-mono';
+          }
+        }
+      });
+    }
+
+    const canvas = document.getElementById('voidCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function onDataChanged() {
+      saveData();
+      updateCanvasAndStats();
+    }
+
+    function calculateTotalStats() {
+      let totalSlots = 0;
+      let rememberedCount = 0;
+      let currentAccumulatedWeight = 0;
+      let maxPossibleWeight = 0;
+
+      Object.keys(CATEGORIES).forEach(catKey => {
+        const count = CATEGORIES[catKey].count;
+        totalSlots += count;
+        maxPossibleWeight += count * 5; // max weight if all are intensity 5
+
+        appData[catKey].forEach(item => {
+          if (item.checked && item.text.trim().length > 0) {
+            rememberedCount++;
+            currentAccumulatedWeight += item.intensity;
+          }
+        });
+      });
+
+      // Ratio from 0 to 1
+      const densityRatio = Math.min(1, currentAccumulatedWeight / (totalSlots * 3.8)); 
+      // 3.8 average intensity allows hitting 100% when all 28 items are documented thoughtfully
+      const percentage = Math.round(densityRatio * 100);
+
+      return {
+        totalSlots,
+        rememberedCount,
+        densityRatio,
+        percentage
+      };
+    }
+
+    function updateCanvasAndStats() {
+      const stats = calculateTotalStats();
+
+      // UI Elements update
+      document.getElementById('densityPercentage').textContent = `${stats.percentage}%`;
+      const densityBar = document.getElementById('densityBar');
+      densityBar.style.width = `${stats.percentage}%`;
+
+      // Header dot indicator
+      const headerDot = document.getElementById('headerDot');
+      if (stats.percentage === 100) {
+        headerDot.className = 'w-2.5 h-2.5 rounded-full bg-black border border-stone-800 shadow';
+      } else {
+        const lightness = 100 - (stats.percentage * 0.9);
+        headerDot.style.backgroundColor = `hsl(0, 0%, ${lightness}%)`;
+      }
+
+      // Dynamic DBT quotes based on saturation degree
+      const quoteEl = document.getElementById('stateQuote');
+      const subQuoteEl = document.getElementById('subQuote');
+      subQuoteEl.textContent = `${stats.rememberedCount} de ${stats.totalSlots} âncoras lembradas.`;
+
+      if (stats.percentage === 0) {
+        quoteEl.textContent = `"A tela está em silêncio. Um vazio aparente à espera das memórias que sustentam o dia."`;
+      } else if (stats.percentage < 25) {
+        quoteEl.textContent = `"Primeiros pigmentos de presença. A dormência cede lugar aos primeiros detalhes factuais."`;
+      } else if (stats.percentage < 55) {
+        quoteEl.textContent = `"O peso das ações ganha corpo. O dia começa a revelar as suas marcas reais."`;
+      } else if (stats.percentage < 85) {
+        quoteEl.textContent = `"A densidade do real se consolida. O que parecia ausência revela sua matéria espessa."`;
+      } else if (stats.percentage < 100) {
+        quoteEl.textContent = `"Quase opaco. Restam apenas lampejos tênues para a totalidade da memória."`;
+      } else {
+        quoteEl.textContent = `"Preto Pleno: O vazio está totalmente repleto. Nada ficou sem testemunha."`;
+      }
+
+      // Pulsing effect when fully saturated
+      const canvasFrame = document.getElementById('canvasFrame');
+      if (stats.percentage >= 100) {
+        canvasFrame.classList.add('full-density');
+        canvasFrame.style.borderColor = '#000000';
+      } else {
+        canvasFrame.classList.remove('full-density');
+        canvasFrame.style.borderColor = 'rgba(87, 83, 78, 0.6)';
+      }
+
+      // Ambient glow
+      const ambientGlow = document.getElementById('ambientGlow');
+      if (stats.percentage >= 100) {
+        ambientGlow.className = 'absolute inset-4 rounded-full blur-2xl transition-all duration-1000 opacity-90 bg-black';
+      } else {
+        const glowVal = Math.round(220 - (stats.percentage * 2));
+        ambientGlow.style.backgroundColor = `rgb(${glowVal}, ${glowVal}, ${glowVal})`;
+      }
+
+      // Render the subtractive ink painting on canvas
+      drawSubtractiveCanvas(stats.densityRatio);
+    }
+
+    function drawSubtractiveCanvas(overallDensity) {
+      const w = canvas.width;
+      const h = canvas.height;
+      const center = w / 2;
+
+      // Reset canvas to absolute white
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, w, h);
+
+      // We use 'multiply' composite operation to achieve true subtractive ink mixing
+      ctx.globalCompositeOperation = 'multiply';
+
+      // 1. Draw each individual remembered item as a rich watercolor bloom
+      Object.keys(CATEGORIES).forEach(catKey => {
+        const catConfig = CATEGORIES[catKey];
+        const [baseR, baseG, baseB] = catConfig.baseColor;
+        const items = appData[catKey];
+
+        items.forEach((item, idx) => {
+          if (!item.checked || !item.text.trim()) return;
+
+          const intensity = item.intensity || 1;
+          const rad = (item.angle || (idx * 0.6)) + (Math.sin(idx) * 0.1);
+          const distance = (item.distRatio || 0.4) * (w * 0.38);
+
+          const cx = center + Math.cos(rad) * distance;
+          const cy = center + Math.sin(rad) * distance;
+
+          // Radius depends on intensity
+          const blobRadius = (w * 0.22) * (0.6 + (intensity * 0.15));
+
+          // Draw organic multi-layered splash
+          drawOrganicBlob(cx, cy, blobRadius, baseR, baseG, baseB, intensity);
+        });
+      });
+
+      // 2. Global overlay saturation pass
+      // As overall density climbs, overall ambient ink wash washes over to guarantee black convergence
+      if (overallDensity > 0.02) {
+        ctx.globalCompositeOperation = 'multiply';
+
+        // Repeated dense passes as percentage approaches 100%
+        const passes = Math.floor(overallDensity * 6);
+        for (let p = 0; p < passes; p++) {
+          const grad = ctx.createRadialGradient(center, center, 0, center, center, center * 1.05);
+          // Dark charcoal ink
+          grad.addColorStop(0, `rgba(5, 5, 8, ${0.4 + (overallDensity * 0.5)})`);
+          grad.addColorStop(0.7, `rgba(10, 10, 15, ${0.35 + (overallDensity * 0.55)})`);
+          grad.addColorStop(1, `rgba(2, 2, 5, ${0.5 + (overallDensity * 0.5)})`);
+
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(center, center, center, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // If completely full (100%), stamp pure absolute black for crisp totality
+        if (overallDensity >= 0.999) {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(center, center, center, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Draw subtle circular vignette border inside canvas
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.lineWidth = 14;
+      ctx.strokeStyle = '#0c0a09';
+      ctx.beginPath();
+      ctx.arc(center, center, center - 7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Helper for procedural ink blooms with organic water edges
+    function drawOrganicBlob(x, y, radius, r, g, b, intensity) {
+      const alphaBase = 0.35 + (intensity * 0.12);
+      const layers = 3 + intensity;
+
+      for (let l = 0; l < layers; l++) {
+        const curRadius = radius * (0.6 + (l * 0.15));
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, curRadius);
+        
+        grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${alphaBase})`);
+        grad.addColorStop(0.6, `rgba(${Math.max(0, r - 5)}, ${Math.max(0, g - 5)}, ${Math.max(0, b - 5)}, ${alphaBase * 0.8})`);
+        grad.addColorStop(1, `rgba(255, 255, 255, 1)`); // White ends cleanly in multiply blend mode
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+
+        // Polygon with randomized vertices to imitate irregular watercolor bleed
+        const points = 16;
+        for (let i = 0; i < points; i++) {
+          const theta = (i / points) * Math.PI * 2;
+          const jitter = 0.85 + (Math.sin(i * 3.5 + l) * 0.18);
+          const px = x + Math.cos(theta) * curRadius * jitter;
+          const py = y + Math.sin(theta) * curRadius * jitter;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    const tabButtons = document.querySelectorAll('.cat-tab');
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabButtons.forEach(b => {
+          b.classList.remove('active', 'bg-stone-800', 'text-stone-100', 'border-stone-700');
+          b.classList.add('text-stone-400', 'border-transparent');
+        });
+        btn.classList.add('active', 'bg-stone-800', 'text-stone-100', 'border-stone-700');
+        btn.classList.remove('text-stone-400', 'border-transparent');
+
+        currentCategory = btn.getAttribute('data-cat');
+        renderItems();
+      });
+    });
+
+    /* Toast notification helper */
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const msg = document.getElementById('toastMsg');
+      msg.textContent = message;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+
+    // Fill Example Data button
+    document.getElementById('btnExample').addEventListener('click', () => {
+      const exampleSet = {
+        pessoas: [
+          { text: "Conversa honesta com a Mariana sobre cansaço", intensity: 4 },
+          { text: "Mensagem carinhosa da minha mãe pela manhã", intensity: 5 },
+          { text: "A gentileza do atendente da padaria ao me desejar bom dia", intensity: 2 },
+          { text: "A leitura dos aforismos de Clarice Lispector", intensity: 3 },
+          { text: "Olhar nos olhos do cachorro do vizinho no elevador", intensity: 2 },
+          { text: "A voz e as ideias de Marsha Linehan no manual de DBT", intensity: 4 },
+          { text: "Meu amigo Pedro mandando um meme pontual", intensity: 3 },
+          { text: "A médica que me atendeu com respeito na semana passada", intensity: 3 },
+          { text: "O autor de um podcast de filosofia que me acompanhou no trânsito", intensity: 4 },
+          { text: "Eu mesmo, tendo paciência comigo no momento de frustração", intensity: 5 }
+        ],
+        funcional: [
+          { text: "Beber uma garrafa inteira de água ao acordar", intensity: 4 },
+          { text: "Tomar um banho longo prestando atenção na temperatura da água", intensity: 4 },
+          { text: "Arrumar a cama esticando bem o lençol", intensity: 3 },
+          { text: "Preparar café moído na hora e sentir o aroma no ar", intensity: 4 },
+          { text: "Caminhar 20 minutos olhando as copas das árvores", intensity: 4 },
+          { text: "Tomar a medicação diária sem adiar", intensity: 5 },
+          { text: "Almoçar uma refeição nutritiva sem mexer no celular", intensity: 4 },
+          { text: "Lavar e guardar toda a louça da pia", intensity: 3 },
+          { text: "Pagar uma conta pendente antes do vencimento", intensity: 4 },
+          { text: "Fazer 5 minutos de respiração com expiração prolongada", intensity: 4 }
+        ],
+        musicas: [
+          { text: "Max Richter — On the Nature of Daylight", intensity: 5 },
+          { text: "Radiohead — Daydreaming", intensity: 4 },
+          { text: "Chico Buarque — Construção", intensity: 4 },
+          { text: "Ólafur Arnalds — Near Light", intensity: 3 },
+          { text: "Milton Nascimento — Clube da Esquina Nº 2", intensity: 5 }
+        ],
+        criativo: [
+          { text: "Escrever uma página inteira de fluxo de pensamentos no diário", intensity: 4 },
+          { text: "Rascunhar um diagrama das minhas prioridades da semana", intensity: 4 },
+          { text: "Montar um novo arranjo para as plantas da varanda", intensity: 3 }
+        ]
+      };
+
+      Object.keys(exampleSet).forEach(cat => {
+        exampleSet[cat].forEach((sample, i) => {
+          if (appData[cat][i]) {
+            appData[cat][i].text = sample.text;
+            appData[cat][i].intensity = sample.intensity;
+            appData[cat][i].checked = true;
+          }
+        });
+      });
+
+      saveData();
+      renderItems();
+      updateCanvasAndStats();
+      showToast('Exemplo carregado. O diagrama atingiu o preto pleno!');
+    });
+
+    // Reset Day handler
+    document.getElementById('btnReset').addEventListener('click', () => {
+      // Replaced window.confirm with an inline modal-like direct UI confirmation
+      const confirmAction = () => {
+        localStorage.removeItem(STORAGE_KEY);
+        appData = initializeData();
+        renderItems();
+        updateCanvasAndStats();
+        showToast('O diagrama retornou ao branco inicial.');
+      };
+
+      // Create quick confirmation banner inside category header
+      const header = document.getElementById('categoryHeader');
+      const originalContent = header.innerHTML;
+      
+      header.innerHTML = `
+        <div class="flex items-center justify-between w-full p-1">
+          <div class="flex items-center gap-2 text-stone-200 text-xs">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-red-400"></i>
+            <span>Deseja realmente limpar todas as 28 anotações de hoje?</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnConfCancel" class="px-3 py-1 rounded bg-stone-800 hover:bg-stone-700 text-xs text-stone-300">Cancelar</button>
+            <button id="btnConfOk" class="px-3 py-1 rounded bg-red-900/80 hover:bg-red-800 text-xs text-white font-medium">Limpar Tudo</button>
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+
+      document.getElementById('btnConfCancel').onclick = () => {
+        header.innerHTML = originalContent;
+        renderItems();
+        lucide.createIcons();
+      };
+      document.getElementById('btnConfOk').onclick = () => {
+        confirmAction();
+      };
+    });
+
+    /* Export Modal handling */
+    const exportModal = document.getElementById('exportModal');
+    document.getElementById('btnExport').addEventListener('click', () => {
+      // Prepare canvas image data url
+      const dataUrl = canvas.toDataURL('image/png');
+      document.getElementById('exportPreviewImg').src = dataUrl;
+      document.getElementById('btnDownloadImage').href = dataUrl;
+
+      // Prepare text summary
+      const stats = calculateTotalStats();
+      let summary = `DIAGRAMA DO VAZIO — REGISTRO DO DIA\n`;
+      summary += `Densidade da Memória: ${stats.percentage}% (${stats.rememberedCount}/28 âncoras)\n`;
+      summary += `Data: ${new Date().toLocaleDateString('pt-BR')}\n`;
+      summary += `----------------------------------------\n\n`;
+
+      Object.keys(CATEGORIES).forEach(cat => {
+        const catConfig = CATEGORIES[cat];
+        summary += `[${catConfig.title.toUpperCase()}]\n`;
+        const items = appData[cat].filter(it => it.checked && it.text.trim().length > 0);
+        if (items.length === 0) {
+          summary += `  (Nenhum registro preenchido nesta categoria)\n`;
+        } else {
+          items.forEach(it => {
+            summary += `  • ${it.text} (Peso: ${it.intensity}/5)\n`;
+          });
+        }
+        summary += `\n`;
+      });
+
+      document.getElementById('exportSummaryText').value = summary;
+      exportModal.classList.remove('hidden');
+    });
+
+    document.getElementById('btnCloseModal').addEventListener('click', () => {
+      exportModal.classList.add('hidden');
+    });
+
+    document.getElementById('btnCopySummary').addEventListener('click', () => {
+      const text = document.getElementById('exportSummaryText').value;
+      const tempArea = document.createElement('textarea');
+      tempArea.value = text;
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempArea);
+      showToast('Resumo copiado para a área de transferência!');
+    });
+
+    // Close modal on click outside
+    exportModal.addEventListener('click', (e) => {
+      if (e.target === exportModal) {
+        exportModal.classList.add('hidden');
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderItems();
+      updateCanvasAndStats();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
+```
